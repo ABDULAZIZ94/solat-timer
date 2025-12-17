@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Time Background Image</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        /* Latar belakang gambar */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('time-background.jpeg');
+            background-size: cover;
+            /* center crop */
+            background-position: center;
+            /* tengahkan */
+            background-repeat: no-repeat;
+            filter: brightness(0.5);
+            /* gelapkan sedikit supaya teks jelas */
+            z-index: -1;
+        }
+
+        #time {
+            font-weight: 700;
+            font-size: clamp(5rem, 20vw, 25rem);
+            /* besar ikut lebar screen */
+            line-height: 1;
+        }
+
+        #date {
+            margin-top: 1vh;
+            font-size: clamp(1.2rem, 4vw, 3rem);
+            opacity: 0.95;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="time">00:00:00</div>
+    <div id="date">Loading date…</div>
+
+    <script>
+        function updateDateTime() {
+            const now = new Date();
+
+            const time = now.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
+            const date = now.toLocaleDateString([], {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            document.getElementById('time').textContent = time;
+            document.getElementById('date').textContent = date;
+        }
+
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Time & Solat</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('time-background.jpeg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: brightness(0.5);
+            z-index: -1;
+        }
+
+        #time {
+            font-weight: 700;
+            font-size: clamp(5rem, 20vw, 25rem);
+            line-height: 1;
+        }
+
+        #date {
+            margin-top: 1vh;
+            font-size: clamp(1.2rem, 4vw, 3rem);
+            opacity: 0.95;
+        }
+
+        #solat {
+            margin-top: 3vh;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .solat-box {
+            border: 2px solid #ffffff;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            min-width: 100px;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .solat-box h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+        }
+
+        .solat-box span {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="time">00:00:00</div>
+    <div id="date">Loading date…</div>
+
+    <div id="solat">
+        <!-- Waktu solat akan dimasukkan secara dinamik -->
+    </div>
+
+    <script>
+        // Update waktu dan tarikh
+        function updateDateTime() {
+            const now = new Date();
+
+            const time = now.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
+            const date = now.toLocaleDateString([], {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            document.getElementById('time').textContent = time;
+            document.getElementById('date').textContent = date;
+        }
+
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        // Data solat (contoh, boleh gantikan dengan fetch jika guna server)
+        const solatData = [
+            "2025-12-17,05:55,06:05,07:12,13:20,16:22,19:23,20:33",
+            "2025-12-18,05:56,06:06,07:13,13:21,16:23,19:24,20:34"
+        ];
+
+        function loadSolat() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            const todayLine = solatData.find(line => line.startsWith(todayStr));
+
+            const solatNames = ["Imsak", "Subuh", "Syuruk", "Zohor", "Asar", "Maghrib", "Isyak"];
+            const solatContainer = document.getElementById('solat');
+            solatContainer.innerHTML = ""; // kosongkan dulu
+
+            if (todayLine) {
+                const parts = todayLine.split(',');
+                // parts[0] = tarikh, parts[1..7] = waktu solat
+                for (let i = 0; i < solatNames.length; i++) {
+                    const box = document.createElement('div');
+                    box.className = 'solat-box';
+                    box.innerHTML = `<h3>${solatNames[i]}</h3><span>${parts[i + 1]}</span>`;
+                    solatContainer.appendChild(box);
+                }
+            } else {
+                solatContainer.innerHTML = "<div class='solat-box'>Tiada data untuk hari ini</div>";
+            }
+        }
+
+        loadSolat();
+    </script>
+</body>
+
+</html>
