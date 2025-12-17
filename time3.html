@@ -76,7 +76,7 @@
 </head>
 
 <body>
-    <div id="time">00:00:00</div>
+    <div id="time">00:00:00 AM</div>
     <div id="date">Loading date…</div>
 
     <div id="solat">
@@ -84,6 +84,16 @@
     </div>
 
     <script>
+        // Fungsi untuk tukar 24-jam ke 12-jam dengan AM/PM
+        function toAmPm(time24) {
+            const [hourStr, minute] = time24.split(":");
+            let hour = parseInt(hourStr, 10);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            hour = hour % 12;
+            if (hour === 0) hour = 12;
+            return `${hour.toString().padStart(2, '0')}:${minute} ${ampm}`;
+        }
+
         // Update waktu dan tarikh
         function updateDateTime() {
             const now = new Date();
@@ -91,7 +101,8 @@
             const time = now.toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
-                second: '2-digit'
+                second: '2-digit',
+                hour12: true
             });
 
             const date = now.toLocaleDateString([], {
@@ -108,7 +119,7 @@
         updateDateTime();
         setInterval(updateDateTime, 1000);
 
-        // Data solat (contoh, boleh gantikan dengan fetch jika guna server)
+        // Data solat (contoh)
         const solatData = [
             "2025-12-17,05:55,06:05,07:12,13:20,16:22,19:23,20:33",
             "2025-12-18,05:56,06:06,07:13,13:21,16:23,19:24,20:34"
@@ -129,11 +140,11 @@
 
             if (todayLine) {
                 const parts = todayLine.split(',');
-                // parts[0] = tarikh, parts[1..7] = waktu solat
                 for (let i = 0; i < solatNames.length; i++) {
+                    const time12 = toAmPm(parts[i + 1]);
                     const box = document.createElement('div');
                     box.className = 'solat-box';
-                    box.innerHTML = `<h3>${solatNames[i]}</h3><span>${parts[i + 1]}</span>`;
+                    box.innerHTML = `<h3>${solatNames[i]}</h3><span>${time12}</span>`;
                     solatContainer.appendChild(box);
                 }
             } else {
