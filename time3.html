@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Time & Solat</title>
+
     <style>
         body {
             margin: 0;
@@ -23,32 +24,39 @@
         body::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background-image: url('time-background.jpeg');
             background-size: cover;
             background-position: center;
-            background-repeat: no-repeat;
             filter: brightness(0.5);
             z-index: -1;
         }
 
         #time {
+            font-size: clamp(4rem, 15vw, 18rem);
             font-weight: 700;
-            font-size: clamp(5rem, 20vw, 25rem);
             line-height: 1;
         }
 
+
         #date {
-            margin-top: 1vh;
             font-size: clamp(1.2rem, 4vw, 3rem);
-            opacity: 0.95;
+            margin-top: 0.5vh;
+        }
+
+        #next-solat {
+            margin-top: 1vh;
+            font-size: 2.5rem;
+            font-weight: 600;
+        }
+
+        #iqamat {
+            font-size: 2rem;
+            opacity: 0.9;
+            margin-bottom: 2vh;
         }
 
         #solat {
-            margin-top: 3vh;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
@@ -59,42 +67,44 @@
             border: 2px solid #ffffff;
             border-radius: 12px;
             padding: 1rem 1.5rem;
-            min-width: 100px;
-            background-color: rgba(0, 0, 0, 0.5);
+            min-width: 130px;
+            background: rgba(0, 0, 0, 0.5);
         }
 
         .solat-box h3 {
-            margin: 0 0 0.5rem 0;
-            font-size: 4rem;
+            margin: 0;
+            font-size: 3rem;
         }
 
         .solat-box span {
-            font-size: 2.8rem;
+            font-size: 2.2rem;
             font-weight: 600;
         }
     </style>
 </head>
 
 <body>
-    <div id="time">00:00:00 AM</div>
-    <div id="date">Loading date…</div>
 
-    <div id="solat">
-        <!-- Waktu solat akan dimasukkan secara dinamik -->
-    </div>
+    <div id="time">00:00:00 AM</div>
+    <div id="date">Loading…</div>
+
+    <div id="next-solat"></div>
+    <div id="iqamat"></div>
+
+    <div id="solat"></div>
 
     <script>
-        // Convert 24h → 12h AM/PM
+        /* ========= UTIL ========= */
         function toAmPm(time24) {
             const [h, m] = time24.split(":");
             let hour = parseInt(h, 10);
             const ampm = hour >= 12 ? "PM" : "AM";
             hour = hour % 12 || 12;
-            return `${hour.toString().padStart(2, "0")}:${m} ${ampm}`;
+            return `${hour}:${m} ${ampm}`;
         }
 
-        // Update clock & date
-        function updateDateTime() {
+        /* ========= CLOCK ========= */
+        function updateClock() {
             const now = new Date();
 
             document.getElementById("time").textContent =
@@ -113,56 +123,100 @@
                     day: "numeric"
                 });
         }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-        updateDateTime();
-        setInterval(updateDateTime, 1000);
+        /* ========= DATA ========= */
+        let solatTimes = [];
+        let iqamatMap = {};
 
-        // Load solat time from solat.txt
-        async function loadSolat() {
-            const solatContainer = document.getElementById("solat");
-            solatContainer.innerHTML = "";
+        /* ========= LOAD IQAMAT ========= */
+        async function loadIqamat() {
+            const res = await fetch("iqamat.txt");
+            const text = await res.text();
 
-            const today = new Date();
-            const todayStr =
-                today.getFullYear() + "-" +
-                String(today.getMonth() + 1).padStart(2, "0") + "-" +
-                String(today.getDate()).padStart(2, "0");
-
-            try {
-                const response = await fetch("solat.txt");
-                const text = await response.text();
-
-                const lines = text.trim().split("\n");
-                const todayLine = lines.find(l => l.startsWith(todayStr));
-
-                const solatNames = ["Imsak", "Subuh", "Syuruk", "Zohor", "Asar", "Maghrib", "Isyak"];
-
-                if (!todayLine) {
-                    solatContainer.innerHTML =
-                        "<div class='solat-box'>Tiada data untuk hari ini</div>";
-                    return;
-                }
-
-                const parts = todayLine.split(",");
-
-                solatNames.forEach((name, i) => {
-                    const box = document.createElement("div");
-                    box.className = "solat-box";
-                    box.innerHTML = `
-                        <h3>${name}</h3>
-                        <span>${toAmPm(parts[i + 1])}</span>
-                    `;
-                    solatContainer.appendChild(box);
-                });
-
-            } catch (err) {
-                solatContainer.innerHTML =
-                    "<div class='solat-box'>Gagal baca solat.txt</div>";
-                console.error(err);
-            }
+            text.trim().split("\n").forEach(line => {
+                const [name, min] = line.split(",");
+                iqamatMap[name.trim()] = parseInt(min);
+            });
         }
 
-        loadSolat();
+        /* ========= LOAD SOLAT ========= */
+        async function loadSolat() {
+            const today = new Date().toISOString().slice(0, 10);
+
+            const res = await fetch("solat.txt");
+            const text = await res.text();
+            const line = text.split("\n").find(l => l.startsWith(today));
+
+            if (!line) return;
+
+            const parts = line.split(",");
+            const names = ["Imsak", "Subuh", "Syuruk", "Zohor", "Asar", "Maghrib", "Isyak"];
+
+            solatTimes = names.map((n, i) => ({
+                name: n,
+                time: parts[i + 1]
+            }));
+
+            const solatDiv = document.getElementById("solat");
+            solatDiv.innerHTML = "";
+
+            solatTimes.forEach(s => {
+                const box = document.createElement("div");
+                box.className = "solat-box";
+                box.innerHTML = `
+                    <h3>${s.name}</h3>
+                    <span>${toAmPm(s.time)}</span>
+                `;
+                solatDiv.appendChild(box);
+            });
+        }
+
+        /* ========= NEXT SOLAT ========= */
+        function updateNextSolat() {
+            const now = new Date();
+
+            for (const s of solatTimes) {
+                const [h, m] = s.time.split(":");
+                const t = new Date();
+                t.setHours(h, m, 0, 0);
+
+                if (t > now) {
+                    const diff = t - now;
+                    const min = Math.floor(diff / 60000);
+                    const sec = Math.floor((diff % 60000) / 1000);
+
+                    document.getElementById("next-solat").textContent =
+                        `Solat seterusnya: ${s.name} (${min}m ${sec}s)`;
+
+                    if (iqamatMap[s.name]) {
+                        const iq = new Date(t.getTime() + iqamatMap[s.name] * 60000);
+                        document.getElementById("iqamat").textContent =
+                            `Iqamat: ${iq.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true
+                            })}`;
+                    } else {
+                        document.getElementById("iqamat").textContent = "";
+                    }
+                    return;
+                }
+            }
+
+            document.getElementById("next-solat").textContent = "Menunggu solat esok";
+            document.getElementById("iqamat").textContent = "";
+        }
+
+        /* ========= INIT ========= */
+        async function init() {
+            await loadIqamat();
+            await loadSolat();
+            setInterval(updateNextSolat, 1000);
+        }
+
+        init();
     </script>
 
 </body>

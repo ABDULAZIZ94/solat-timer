@@ -1,0 +1,5 @@
+Subuh,15
+Zohor,10
+Asar,10
+Maghrib,10
+Isyak,10
