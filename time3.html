@@ -28,7 +28,7 @@
             background-image: url('time-background.jpeg');
             background-size: cover;
             background-position: center;
-            filter: brightness(0.5);
+            filter: brightness(0.45);
             z-index: -1;
         }
 
@@ -37,7 +37,6 @@
             font-weight: 700;
             line-height: 1;
         }
-
 
         #date {
             font-size: clamp(1.2rem, 4vw, 3rem);
@@ -97,16 +96,23 @@
         /* ========= UTIL ========= */
         function toAmPm(time24) {
             const [h, m] = time24.split(":");
-            let hour = parseInt(h, 10);
+            let hour = parseInt(h);
             const ampm = hour >= 12 ? "PM" : "AM";
             hour = hour % 12 || 12;
             return `${hour}:${m} ${ampm}`;
         }
 
+        function formatHMS(ms) {
+            const total = Math.floor(ms / 1000);
+            const h = Math.floor(total / 3600);
+            const m = Math.floor((total % 3600) / 60);
+            const s = total % 60;
+            return `${String(h).padStart(2, "0")}j ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+        }
+
         /* ========= CLOCK ========= */
         function updateClock() {
             const now = new Date();
-
             document.getElementById("time").textContent =
                 now.toLocaleTimeString([], {
                     hour: "2-digit",
@@ -129,12 +135,12 @@
         /* ========= DATA ========= */
         let solatTimes = [];
         let iqamatMap = {};
+        let reloaded = false;
 
         /* ========= LOAD IQAMAT ========= */
         async function loadIqamat() {
             const res = await fetch("iqamat.txt");
             const text = await res.text();
-
             text.trim().split("\n").forEach(line => {
                 const [name, min] = line.split(",");
                 iqamatMap[name.trim()] = parseInt(min);
@@ -144,11 +150,9 @@
         /* ========= LOAD SOLAT ========= */
         async function loadSolat() {
             const today = new Date().toISOString().slice(0, 10);
-
             const res = await fetch("solat.txt");
             const text = await res.text();
             const line = text.split("\n").find(l => l.startsWith(today));
-
             if (!line) return;
 
             const parts = line.split(",");
@@ -165,43 +169,59 @@
             solatTimes.forEach(s => {
                 const box = document.createElement("div");
                 box.className = "solat-box";
-                box.innerHTML = `
-                    <h3>${s.name}</h3>
-                    <span>${toAmPm(s.time)}</span>
-                `;
+                box.innerHTML = `<h3>${s.name}</h3><span>${toAmPm(s.time)}</span>`;
                 solatDiv.appendChild(box);
             });
         }
 
-        /* ========= NEXT SOLAT ========= */
+        /* ========= NEXT SOLAT + IQAMAT ========= */
         function updateNextSolat() {
             const now = new Date();
 
-            for (const s of solatTimes) {
+            for (let i = 0; i < solatTimes.length; i++) {
+                const s = solatTimes[i];
                 const [h, m] = s.time.split(":");
-                const t = new Date();
-                t.setHours(h, m, 0, 0);
+                const solatTime = new Date();
+                solatTime.setHours(h, m, 0, 0);
 
-                if (t > now) {
-                    const diff = t - now;
-                    const min = Math.floor(diff / 60000);
-                    const sec = Math.floor((diff % 60000) / 1000);
-
+                if (solatTime > now) {
                     document.getElementById("next-solat").textContent =
-                        `Solat seterusnya: ${s.name} (${min}m ${sec}s)`;
-
-                    if (iqamatMap[s.name]) {
-                        const iq = new Date(t.getTime() + iqamatMap[s.name] * 60000);
-                        document.getElementById("iqamat").textContent =
-                            `Iqamat: ${iq.toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true
-                            })}`;
-                    } else {
-                        document.getElementById("iqamat").textContent = "";
-                    }
+                        `Solat seterusnya: ${s.name} (${formatHMS(solatTime - now)})`;
+                    document.getElementById("iqamat").textContent = "";
                     return;
+                }
+
+                const next = solatTimes[i + 1];
+                if (next && iqamatMap[s.name]) {
+                    const [nh, nm] = next.time.split(":");
+                    const nextTime = new Date();
+                    nextTime.setHours(nh, nm, 0, 0);
+
+                    if (now < nextTime) {
+                        const iqTime = new Date(solatTime.getTime() + iqamatMap[s.name] * 60000);
+                        document.getElementById("next-solat").textContent =
+                            `Solat sekarang: ${s.name}`;
+
+                        if (now < iqTime) {
+                            document.getElementById("iqamat").textContent =
+                                `Iqamat dalam ${formatHMS(iqTime - now)}`;
+                        } else {
+                            document.getElementById("iqamat").textContent = "Iqamat sekarang";
+                        }
+                        return;
+                    }
+                }
+            }
+
+            /* ========= AUTO RELOAD SELEPAS ISYAK ========= */
+            const isyak = solatTimes.find(s => s.name === "Isyak");
+            if (isyak && !reloaded) {
+                const [h, m] = isyak.time.split(":");
+                const reloadTime = new Date();
+                reloadTime.setHours(h, parseInt(m) + (iqamatMap["Isyak"] || 10) + 5, 0, 0);
+                if (now > reloadTime) {
+                    reloaded = true;
+                    location.reload();
                 }
             }
 
@@ -215,7 +235,6 @@
             await loadSolat();
             setInterval(updateNextSolat, 1000);
         }
-
         init();
     </script>
 
